@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "safari-bot"
+version = "0.1.0"
+description = "A discord bot for a pokemon safari"
+authors = ["DrProfSgtMrJ"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+discord-py = "^2.6.4"
+dotenv = "^0.9.9"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
