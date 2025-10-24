@@ -1,0 +1,18 @@
+import discord
+from dataclasses import dataclass
+from discord.ui import View
+
+
+
+@dataclass
+class PokemonView(View):
+    pokemon_name: str
+
+    def __init__(self, name: str, timeout: float | None = 180.0):
+        self.pokemon_name = name
+        super().__init__(timeout=timeout)
+
+    @discord.ui.button(label="Throw Bait", style=discord.ButtonStyle.green)
+    async def throw_bait(self, inter: discord.Interaction, button: discord.ui.Button):
+        print("Hit throw bait")
+        await inter.response.send_message(f"{inter.user.mention} threw bait at {self.pokemon_name}")

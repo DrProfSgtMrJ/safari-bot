@@ -1,7 +1,8 @@
 import os
-import discord
 from discord.ext import commands, tasks
 from dataclasses import dataclass
+
+from views.pokemon_view import PokemonView
 
 
 
@@ -57,6 +58,17 @@ class SafariCog(commands.Cog):
         print(f"Setting channel to: {id}")
         self.safari_channel_id = id
         await ctx.send(f"Setting Safari Channel to: {id}")
+    
+    @commands.command(name="unset-safari-channel")
+    @commands.has_permissions(administrator=True)
+    async def unset_safari_channel(self, ctx: commands.Context):
+        """Unsets the safari channel"""
+        if self.safari_channel_id is None:
+            await ctx.send("Safari channel already unset")
+            return
+
+        self.safari_channel_id = None
+        await ctx.send(f"Unsetting Safari Channel")
 
     @tasks.loop(minutes=2)
     async def safari_task(self):
@@ -66,13 +78,15 @@ class SafariCog(commands.Cog):
         safari_channel = self.bot.get_channel(int(self.safari_channel_id))
         if safari_channel is None:
             return
-
+        
+        pokemon_view = PokemonView("Pikachu")
         # Example message, replace with actual safari logic
-        await safari_channel.send("A wild Pokémon has appeared in the safari!")
+        await safari_channel.send("A wild Pokémon has appeared in the safari!", view=pokemon_view)
 
     @start_safari.error
     @stop_safari.error
     @set_safari_channel.error
+    @unset_safari_channel.error
     async def safari_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to use this command.")
