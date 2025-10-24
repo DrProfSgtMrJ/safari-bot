@@ -9,7 +9,7 @@ from cogs.safari import SafariCog
 load_dotenv()
 
 logger_handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "")
 intents = Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)

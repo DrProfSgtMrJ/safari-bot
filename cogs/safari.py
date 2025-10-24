@@ -1,4 +1,5 @@
 import os
+import discord
 from discord.ext import commands, tasks
 from dataclasses import dataclass
 
@@ -48,7 +49,14 @@ class SafariCog(commands.Cog):
         self.safari_active = False
         self.safari_task.cancel()
         await ctx.send("Safari has been stopped.")
-
+    
+    @commands.command(name="set-safari-channel")
+    @commands.has_permissions(administrator=True)
+    async def set_safari_channel(self, ctx: commands.Context, id: str):
+        """Sets the desired safari channel"""
+        print(f"Setting channel to: {id}")
+        self.safari_channel_id = id
+        await ctx.send(f"Setting Safari Channel to: {id}")
 
     @tasks.loop(minutes=2)
     async def safari_task(self):
@@ -64,6 +72,7 @@ class SafariCog(commands.Cog):
 
     @start_safari.error
     @stop_safari.error
+    @set_safari_channel.error
     async def safari_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to use this command.")
