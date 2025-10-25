@@ -78,7 +78,7 @@ class SafariCog(commands.Cog):
         session = SessionLocal()
 
         # check if user is already registered
-        existing_user = session.query(Users).filter(User.discord_id == discord_id).first()
+        existing_user = session.query(Users).filter(Users.discord_id == discord_id).first()
         if existing_user:
             await ctx.send(f"User with ID `{discord_id}` is already registered!")
             session.close()
@@ -94,6 +94,24 @@ class SafariCog(commands.Cog):
             session.close()
 
             await ctx.send(f"User `{discord_name}` with ID `{discord_id}` has been registered")
+
+    @commands.command(name="unregister-user")
+    @commands.has_permissions(administrator=True)
+    async def unregister_user(self, ctx: commands.Context, discord_id: int):
+        session = SessionLocal()
+
+        # check if user is already registered
+        existing_user = session.query(Users).filter(Users.discord_id == discord_id).first()
+        if existing_user is None:
+            await ctx.send(f"User with ID `{discord_id}` is not registered already!")
+            session.close()
+            return
+        
+        discord_name = existing_user.discord_display_name
+        session.delete(existing_user)
+        session.commit()
+        session.close()
+        await ctx.send(f"User `{discord_name}` with ID `{discord_id}` has been unregistered!")
 
 
     @tasks.loop(minutes=2)
@@ -113,6 +131,8 @@ class SafariCog(commands.Cog):
     @stop_safari.error
     @set_safari_channel.error
     @unset_safari_channel.error
+    @register_user.error
+    @unregister_user.error
     async def safari_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to use this command.")

@@ -14,10 +14,15 @@ intents = Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+
 async def main():
     async with bot:
         await bot.add_cog(SafariCog(bot))
         await bot.start(token=DISCORD_TOKEN) 
+
+@bot.event
+async def on_ready():
+    print("Safari Bot is ready!")
 
 
 if __name__ == "__main__":
