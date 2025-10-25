@@ -3,6 +3,8 @@ from discord.ext import commands, tasks
 from dataclasses import dataclass
 
 from views.pokemon_view import PokemonView
+from db.db import SessionLocal
+from db.models import Users
 
 
 
@@ -69,6 +71,30 @@ class SafariCog(commands.Cog):
 
         self.safari_channel_id = None
         await ctx.send(f"Unsetting Safari Channel")
+
+    @commands.command(name="register-user")
+    @commands.has_permissions(administrator=True)
+    async def register_user(self, ctx: commands.Context, discord_id: int):
+        session = SessionLocal()
+
+        # check if user is already registered
+        existing_user = session.query(Users).filter(User.discord_id == discord_id).first()
+        if existing_user:
+            await ctx.send(f"User with ID `{discord_id}` is already registered!")
+            session.close()
+            return
+        
+        member = await ctx.guild.fetch_member(discord_id)
+        if member:
+            discord_name = member.name
+
+            new_user = Users(discord_id=discord_id, discord_display_name=discord_name)
+            session.add(new_user)
+            session.commit()
+            session.close()
+
+            await ctx.send(f"User `{discord_name}` with ID `{discord_id}` has been registered")
+
 
     @tasks.loop(minutes=2)
     async def safari_task(self):
