@@ -2,6 +2,7 @@ import os
 from discord.ext import commands, tasks
 from dataclasses import dataclass
 
+from cogs.utils import get_random_pokemon
 from views.pokemon_view import PokemonView
 from db.db import SessionLocal
 from db.models import Users
@@ -123,9 +124,10 @@ class SafariCog(commands.Cog):
         if safari_channel is None:
             return
         
-        pokemon_view = PokemonView("Pikachu")
+        pokemon_name, sprite_url = get_random_pokemon()
+        pokemon_view = PokemonView(pokemon_name=pokemon_name, sprite_url=sprite_url)
         # Example message, replace with actual safari logic
-        await safari_channel.send("A wild Pokémon has appeared in the safari!", view=pokemon_view)
+        await safari_channel.send(view=pokemon_view, embed=pokemon_view.get_embeded())
 
     @start_safari.error
     @stop_safari.error
