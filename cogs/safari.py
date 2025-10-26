@@ -3,6 +3,7 @@ import random
 from discord.ext import commands, tasks
 
 from cogs.utils import get_random_pokemon
+from data_models.pokemon import Pokemon
 from views.pokemon_view import PokemonView
 from db.db import SessionLocal
 from db.models import Users
@@ -117,10 +118,9 @@ class SafariCog(commands.Cog):
             print(f"Could not find channel with ID {channel_id}")
             return
 
-        pokemon_name, sprite_url = get_random_pokemon()
-        pokemon_view = PokemonView(pokemon_name=pokemon_name, sprite_url=sprite_url)
-        print(f"Spawned {pokemon_name} in {safari_channel.name}")
-        await safari_channel.send(view=pokemon_view, embed=pokemon_view.get_embeded())
+        pokemon: Pokemon = get_random_pokemon()
+        pokemon_view = PokemonView(pokemon_name=pokemon.name)
+        await safari_channel.send(view=pokemon_view, embed=pokemon.to_embeded())
 
     @start_safari.error
     @set_safari_channels.error
