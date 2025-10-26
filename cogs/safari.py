@@ -1,6 +1,5 @@
 import os
 from discord.ext import commands, tasks
-from dataclasses import dataclass
 
 from cogs.utils import get_random_pokemon
 from views.pokemon_view import PokemonView
@@ -9,16 +8,16 @@ from db.models import Users
 
 
 
-@dataclass
 class SafariCog(commands.Cog):
     bot: commands.Bot
-    safari_active: bool = False
-    safari_channel_id: str | None = None
+    safari_active: bool
+    safari_channel_ids: list[int]
 
     def __init__(self, bot: commands.Bot):
+        super().__init__()
         self.bot = bot
         self.safari_active = False
-        self.safari_channel_id = os.getenv("SAFARI_CHANNEL_ID")
+        self.safari_channel_ids = []
 
     @commands.command(name="start-safari")
     @commands.has_permissions(administrator=True)
@@ -28,19 +27,20 @@ class SafariCog(commands.Cog):
             await ctx.send("Safari is already active.")
             return
 
-        if self.safari_channel_id is None:
-            await ctx.send("Safari channel is not set. Please set it first with `!set-safari-channel`.")
+        if len(self.safari_channel_ids) == 0:
+            await ctx.send("No Safari channels set. Please set with `!set-safari-channels`.")
             return
 
         self.safari_active = True
 
-        safari_channel = self.bot.get_channel(int(self.safari_channel_id))
-        if safari_channel is None:
-            await ctx.send("The specified safari channel could not be found.")
-            self.safari_active = False
-            return
+        channel_ids = ""
+        for id in self.safari_channel_ids:
+            safari_channel = self.bot.get_channel(int(id))
+            if safari_channel is None:
+                await ctx.send(f"The specified safari channel with id {id} could not be found.")
+            channel_ids += f"{id}," 
         self.safari_task.start()
-        await ctx.send(f"Safari started in {safari_channel.mention}!")
+        await ctx.send(f"Safari started in {channel_ids}!")
 
     @commands.command(name="stop-safari")
     @commands.has_permissions(administrator=True)
@@ -54,24 +54,14 @@ class SafariCog(commands.Cog):
         self.safari_task.cancel()
         await ctx.send("Safari has been stopped.")
     
-    @commands.command(name="set-safari-channel")
+    @commands.command(name="set-safari-channels", help="Provide channel ids separated by '/'.")
     @commands.has_permissions(administrator=True)
-    async def set_safari_channel(self, ctx: commands.Context, id: str):
-        """Sets the desired safari channel"""
-        print(f"Setting channel to: {id}")
-        self.safari_channel_id = id
-        await ctx.send(f"Setting Safari Channel to: {id}")
-    
-    @commands.command(name="unset-safari-channel")
-    @commands.has_permissions(administrator=True)
-    async def unset_safari_channel(self, ctx: commands.Context):
-        """Unsets the safari channel"""
-        if self.safari_channel_id is None:
-            await ctx.send("Safari channel already unset")
-            return
-
-        self.safari_channel_id = None
-        await ctx.send(f"Unsetting Safari Channel")
+    async def set_safari_channels(self, ctx: commands.Context, ids: str):
+        """Sets the desired safari channels - / seperated"""
+        print(f"ids: {ids}")
+        channel_ids = [int(ch.strip()) for ch in ids.split('/') if ch.strip()]
+        self.safari_channel_ids = channel_ids
+        await ctx.send(f"Setting Safari Channels to: {self.safari_channel_ids}")
 
     @commands.command(name="register-user")
     @commands.has_permissions(administrator=True)
@@ -117,22 +107,16 @@ class SafariCog(commands.Cog):
 
     @tasks.loop(minutes=2)
     async def safari_task(self):
-        if not self.safari_active or self.safari_channel_id is None:
+        if not self.safari_active or len(self.safari_channel_ids) == 0:
             return
 
-        safari_channel = self.bot.get_channel(int(self.safari_channel_id))
-        if safari_channel is None:
-            return
-        
         pokemon_name, sprite_url = get_random_pokemon()
         pokemon_view = PokemonView(pokemon_name=pokemon_name, sprite_url=sprite_url)
-        # Example message, replace with actual safari logic
-        await safari_channel.send(view=pokemon_view, embed=pokemon_view.get_embeded())
+        #await safari_channel.send(view=pokemon_view, embed=pokemon_view.get_embeded())
 
     @start_safari.error
     @stop_safari.error
-    @set_safari_channel.error
-    @unset_safari_channel.error
+    @set_safari_channels.error
     @register_user.error
     @unregister_user.error
     async def safari_command_error(self, ctx: commands.Context, error):
