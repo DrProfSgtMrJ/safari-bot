@@ -1,4 +1,5 @@
 import os
+import random
 from discord.ext import commands, tasks
 
 from cogs.utils import get_random_pokemon
@@ -109,14 +110,21 @@ class SafariCog(commands.Cog):
     async def safari_task(self):
         if not self.safari_active or len(self.safari_channel_ids) == 0:
             return
+        print(f"Selecting from : {self.safari_channel_ids}") 
+        channel_id = random.choice(self.safari_channel_ids)
+        safari_channel = self.bot.get_channel(channel_id)
+        if safari_channel is None:
+            print(f"Could not find channel with ID {channel_id}")
+            return
 
         pokemon_name, sprite_url = get_random_pokemon()
         pokemon_view = PokemonView(pokemon_name=pokemon_name, sprite_url=sprite_url)
-        #await safari_channel.send(view=pokemon_view, embed=pokemon_view.get_embeded())
+        print(f"Spawned {pokemon_name} in {safari_channel.name}")
+        await safari_channel.send(view=pokemon_view, embed=pokemon_view.get_embeded())
 
     @start_safari.error
-    @stop_safari.error
     @set_safari_channels.error
+    @stop_safari.error
     @register_user.error
     @unregister_user.error
     async def safari_command_error(self, ctx: commands.Context, error):
