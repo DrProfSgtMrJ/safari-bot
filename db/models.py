@@ -1,7 +1,14 @@
-from sqlalchemy import Column, Integer, BigInteger, String, Enum, null
-from data_models.pokemon import Rarity
+from sqlalchemy import Column, Integer, BigInteger, String, Enum
 from .db import Base
+import enum
 
+class Rarity(enum.Enum):
+    COMMON = "common"
+    UNCOMMON = "uncommon"
+    RARY = "rare"
+    LEGENDARY = "legendary"
+
+rarity_enum = Enum(Rarity, name="rarity_enum", create_type=True)
 
 class Users(Base):
     __tablename__ = "users"
@@ -16,4 +23,4 @@ class Pokemon(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
     sprite_url = Column(String, nullable=True)
-    rarity = Column(Enum(Rarity), nullable=False, default=Rarity.COMMON)
+    rarity = Column(rarity_enum, nullable=False, default=Rarity.COMMON)

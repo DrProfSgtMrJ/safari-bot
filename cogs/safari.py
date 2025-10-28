@@ -115,7 +115,8 @@ class SafariCog(commands.Cog):
             print(f"Could not find channel with ID {channel_id}")
             return
 
-        pokemon: Pokemon = get_random_pokemon()
+        pokemon: Pokemon = await get_random_pokemon()
+        print(f"Got: {pokemon.name}")
         pokemon_view = PokemonView(pokemon_name=pokemon.name)
         await safari_channel.send(view=pokemon_view, embed=pokemon.to_embeded())
 

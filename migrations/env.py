@@ -4,6 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+from sqlalchemy.ext.asyncio import AsyncEngine
 import sys
 import os
 
@@ -64,14 +65,29 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine
-    with connectable.connect() as connection:
+    connectable = context.config.attributes.get("connection", None)
+    if connectable is None:
+        from db.db import engine
+        connectable = engine
+
+    assert isinstance(connectable, AsyncEngine)
+    
+    import asyncio
+
+    async def do_run_migrations():
+        async with connectable.connect() as connection:
+            await connection.run_sync(do_run_migrations_sync)
+
+    def do_run_migrations_sync(connection):
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata
         )
 
         with context.begin_transaction():
             context.run_migrations()
+
+    asyncio.run(do_run_migrations())
 
 
 if context.is_offline_mode():
