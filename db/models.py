@@ -5,7 +5,7 @@ import enum
 class Rarity(enum.Enum):
     COMMON = "common"
     UNCOMMON = "uncommon"
-    RARY = "rare"
+    RARE = "rare"
     LEGENDARY = "legendary"
 
 rarity_enum = Enum(Rarity, name="rarity_enum", create_type=True)

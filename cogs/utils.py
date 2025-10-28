@@ -1,16 +1,16 @@
 import random
 import pokebase as pb
 from sqlalchemy import func, select
-from data_models.pokemon import Rarity, Pokemon
+from data_models.pokemon import Pokemon
 
 from db.db import AsyncSessionLocal
-from db.models import Pokemon as DbPokemon
+from db.models import Pokemon as DbPokemon, Rarity as DbRarity
 
 RARITY_WEIGHTS = {
-    Rarity.COMMON: 60,
-    Rarity.UNCOMMON: 25,
-    Rarity.RARE: 10,
-    Rarity.LEGENDARY: 5
+    DbRarity.COMMON: 60,
+    DbRarity.UNCOMMON: 25,
+    DbRarity.RARE: 10,
+    DbRarity.LEGENDARY: 5
 }
 
 async def get_random_pokemon() -> Pokemon:

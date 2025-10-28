@@ -1,21 +1,20 @@
 import asyncio
 import pokebase as pb
-from data_models.pokemon import Rarity
 from db.db import AsyncSessionLocal, Base, AsyncSessionLocal, engine
-from db.models import Pokemon
+from db.models import Pokemon, Rarity as Db_Rarity
 
-def determine_rarity(species) -> Rarity:
+def determine_rarity(species) -> Db_Rarity:
     print(f"species: {species}")
     if species.is_legendary or species.is_mythical:
-        return Rarity.LEGENDARY
+        return Db_Rarity.LEGENDARY
     elif species.is_baby:
-        return Rarity.COMMON
+        return Db_Rarity.COMMON
     elif species.capture_rate >= 150:
-        return Rarity.COMMON
+        return Db_Rarity.COMMON
     elif species.capture_rate >= 100:
-        return Rarity.UNCOMMON
+        return Db_Rarity.UNCOMMON
     else:
-        return Rarity.RARE
+        return Db_Rarity.RARE
 
 
 async def populate_gen1_pokemon():

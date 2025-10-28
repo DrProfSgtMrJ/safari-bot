@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from discord import Embed, Color
-from db.models import Pokemon as DbPokemon
+from db.models import Pokemon as DbPokemon, Rarity as DbRarity
 
 
 class Rarity(str, Enum):
@@ -19,6 +19,9 @@ class Rarity(str, Enum):
             return "⭐⭐⭐"
         else:
             return "⭐⭐⭐⭐"
+    @classmethod
+    def from_db_rarity(cls, db_rarity: DbRarity) -> "Rarity":
+        return cls(db_rarity.value)
 
 @dataclass
 class Pokemon:
@@ -29,7 +32,7 @@ class Pokemon:
 
     @classmethod
     def from_db_pokemon(cls, db_pokemon: DbPokemon) -> "Pokemon":
-        return cls(id=int(db_pokemon.id), name=str(db_pokemon.name), sprite_url=str(db_pokemon.sprite_url), rarity=Rarity(db_pokemon.rarity))
+        return cls(id=int(db_pokemon.id), name=str(db_pokemon.name), sprite_url=str(db_pokemon.sprite_url), rarity=Rarity.from_db_rarity(db_pokemon.rarity))
 
     def to_embeded(self) -> Embed:
         embed = Embed(
@@ -38,6 +41,6 @@ class Pokemon:
             color=Color.ash_embed()
         )
         embed.set_image(url=self.sprite_url)
-        embed.set_footer(text=f"Rarity: {self.rarity}: {self.rarity.get_star()}")
+        embed.set_footer(text=f"Rarity: {self.rarity.get_star()}")
 
         return embed
