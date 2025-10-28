@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from db.db import Base, engine
-from db.models import Users, Pokemon
+from db.models import Users, Pokemon, SafariInventory
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

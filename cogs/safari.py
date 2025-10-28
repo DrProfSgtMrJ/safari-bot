@@ -1,12 +1,13 @@
 import os
 import random
 from discord.ext import commands, tasks
+from sqlalchemy import select
 
 from cogs.utils import get_random_pokemon
 from data_models.pokemon import Pokemon
 from views.pokemon_view import PokemonView
 from db.db import AsyncSessionLocal
-from db.models import Users
+from db.models import SafariInventory, Users
 
 
 
@@ -70,7 +71,8 @@ class SafariCog(commands.Cog):
     async def register_user(self, ctx: commands.Context, discord_id: int):
         async with AsyncSessionLocal() as session:
             # check if user is already registered
-            existing_user = session.query(Users).filter(Users.discord_id == discord_id).first()
+            result = await session.execute(select(Users).where(Users.discord_id == discord_id))
+            existing_user = result.scalar_one_or_none()
             if existing_user:
                 await ctx.send(f"User with ID `{discord_id}` is already registered!")
                 session.close()
@@ -82,26 +84,20 @@ class SafariCog(commands.Cog):
 
                 new_user = Users(discord_id=discord_id, discord_display_name=discord_name)
                 session.add(new_user)
+                await session.commit()
+                await session.refresh(new_user)
+
+                inventory = SafariInventory(user_id=new_user.id)
+                session.add(inventory)
+                await session.commit()
 
                 await ctx.send(f"User `{discord_name}` with ID `{discord_id}` has been registered")
 
     @commands.command(name="unregister-user")
     @commands.has_permissions(administrator=True)
     async def unregister_user(self, ctx: commands.Context, discord_id: int):
-        session = SessionLocal()
-
-        # check if user is already registered
-        existing_user = session.query(Users).filter(Users.discord_id == discord_id).first()
-        if existing_user is None:
-            await ctx.send(f"User with ID `{discord_id}` is not registered already!")
-            session.close()
-            return
-        
-        discord_name = existing_user.discord_display_name
-        session.delete(existing_user)
-        session.commit()
-        session.close()
-        await ctx.send(f"User `{discord_name}` with ID `{discord_id}` has been unregistered!")
+        pass
+        #await ctx.send(f"User `{discord_name}` with ID `{discord_id}` has been unregistered!")
 
 
     @tasks.loop(minutes=2)
@@ -124,12 +120,11 @@ class SafariCog(commands.Cog):
     @set_safari_channels.error
     @stop_safari.error
     @register_user.error
-    @unregister_user.error
     async def safari_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to use this command.")
         else:
-            await ctx.send("An error occurred.")
+            await ctx.send(f"An error occurred: {error}")
 
      
 
