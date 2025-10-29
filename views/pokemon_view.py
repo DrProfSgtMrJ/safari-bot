@@ -2,7 +2,7 @@ import discord
 from discord.ui import View
 
 from data_models.pokemon import Rarity
-from db.helpers import use_bait, UseBaitResult
+from db.helpers import UseBallResult, use_bait, UseBaitResult, use_ball
 
 class PokemonView(View):
     pokemon_name: str
@@ -53,6 +53,14 @@ class PokemonView(View):
     async def throw_ball(self, inter:discord.Interaction, button: discord.ui.Button):
         if self.fled:
             return
+        use_ball_result = await use_ball(inter.user.id)
+        if use_ball_result == UseBallResult.NoInventoryFound:
+            await inter.response.send_message(f"{inter.user.mention} has no safari inventory. Make sure you are registered")
+            return
+        elif use_ball_result == UseBallResult.NoBallsLeft:
+            await inter.response.send_message(f"{inter.user.mention} has no more pokeballs left")
+            return
+
         print("throw ball")
         await inter.response.send_message(f"{inter.user.mention} threw a ball at {self.pokemon_name}")
 

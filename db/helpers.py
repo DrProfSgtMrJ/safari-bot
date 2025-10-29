@@ -9,6 +9,11 @@ class UseBaitResult(str, Enum):
     NoBaitLeft = "NoBaitLeft"
     BaitUsed = "BaitUsed"
 
+class UseBallResult(str, Enum):
+    NoInventoryFound = "NoInventoryFound"
+    NoBallsLeft = "NoBallsLeft"
+    BallUsed = "BallUsed"
+
 RARITY_WEIGHTS = {
     Rarity.COMMON: 60,
     Rarity.UNCOMMON: 25,
@@ -35,7 +40,6 @@ async def get_rand_pokemon_by_rarity(rarity: Rarity) -> Pokemon | None:
 
 
 # Use Safari Inventory
-
 async def use_bait(discord_id: int) -> UseBaitResult:
     """ 
     Will lower the bait number in the user's safari inventory
@@ -59,5 +63,27 @@ async def use_bait(discord_id: int) -> UseBaitResult:
 
     return UseBaitResult.BaitUsed
 
+async def use_ball(discord_id: int) -> UseBallResult:
+    """ 
+    Will lower the ball number in the user's safari inventory
+    """
+    # Get the User
+    print(f"Using ball for: {discord_id}")
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(SafariInventory).join(Users).where(Users.discord_id == discord_id)
+        )
+        safari_inventory = result.scalar_one_or_none()
+
+        if not safari_inventory:
+            return UseBallResult.NoInventoryFound
+        if safari_inventory.pokeballs<= 0:
+            return UseBallResult.NoBallsLeft
+
+        safari_inventory.pokeballs -= 1
+        session.add(safari_inventory)
+        await session.commit()
+
+    return UseBallResult.BallUsed
     
 
