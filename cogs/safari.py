@@ -75,7 +75,7 @@ class SafariCog(commands.Cog):
             existing_user = result.scalar_one_or_none()
             if existing_user:
                 await ctx.send(f"User with ID `{discord_id}` is already registered!")
-                session.close()
+                await session.close()
                 return
             
             member = await ctx.guild.fetch_member(discord_id)
@@ -113,7 +113,7 @@ class SafariCog(commands.Cog):
 
         pokemon: Pokemon = await get_random_pokemon()
         print(f"Got: {pokemon.name}")
-        pokemon_view = PokemonView(pokemon_name=pokemon.name)
+        pokemon_view = PokemonView(pokemon_name=pokemon.name, rarity=pokemon.rarity)
         await safari_channel.send(view=pokemon_view, embed=pokemon.to_embeded())
 
     @start_safari.error

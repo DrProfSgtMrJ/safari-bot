@@ -8,7 +8,7 @@ class Rarity(str, Enum):
     COMMON = "common"
     UNCOMMON = "uncommon"
     RARE = "rare"
-    LEGENDARY = "lengendary"
+    LEGENDARY = "legendary"
 
     def get_star(self) -> str:
         if self == Rarity.COMMON:

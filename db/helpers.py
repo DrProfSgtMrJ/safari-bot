@@ -1,7 +1,13 @@
 import random
 from sqlalchemy import func, select
 from db.db import AsyncSessionLocal
-from db.models import Pokemon, Rarity
+from db.models import Pokemon, Rarity, SafariInventory, Users
+from enum import Enum
+
+class UseBaitResult(str, Enum):
+    NoInventoryFound = "NoInventoryFound"
+    NoBaitLeft = "NoBaitLeft"
+    BaitUsed = "BaitUsed"
 
 RARITY_WEIGHTS = {
     Rarity.COMMON: 60,
@@ -30,6 +36,28 @@ async def get_rand_pokemon_by_rarity(rarity: Rarity) -> Pokemon | None:
 
 # Use Safari Inventory
 
-async def use_bait(discord_id: int):
-    pass
+async def use_bait(discord_id: int) -> UseBaitResult:
+    """ 
+    Will lower the bait number in the user's safari inventory
+    """
+    # Get the User
+    print(f"Using bait for: {discord_id}")
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(SafariInventory).join(Users).where(Users.discord_id == discord_id)
+        )
+        safari_inventory = result.scalar_one_or_none()
+
+        if not safari_inventory:
+            return UseBaitResult.NoInventoryFound
+        if safari_inventory.bait <= 0:
+            return UseBaitResult.NoBaitLeft
+
+        safari_inventory.bait -= 1
+        session.add(safari_inventory)
+        await session.commit()
+
+    return UseBaitResult.BaitUsed
+
+    
 

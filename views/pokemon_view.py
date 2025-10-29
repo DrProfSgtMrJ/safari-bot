@@ -2,6 +2,7 @@ import discord
 from discord.ui import View
 
 from data_models.pokemon import Rarity
+from db.helpers import use_bait, UseBaitResult
 
 class PokemonView(View):
     pokemon_name: str
@@ -36,6 +37,15 @@ class PokemonView(View):
     async def throw_bait(self, inter: discord.Interaction, button: discord.ui.Button):
         if self.fled:
             return
+
+        use_bait_result = await use_bait(inter.user.id)
+        if use_bait_result == UseBaitResult.NoInventoryFound:
+            await inter.response.send_message(f"{inter.user.mention} has no safari inventory. Make sure you are registered")
+            return
+        elif use_bait_result == UseBaitResult.NoBaitLeft:
+            await inter.response.send_message(f"{inter.user.mention} has no more bait left")
+            return
+
         print("throw bait")
         await inter.response.send_message(f"{inter.user.mention} threw bait at {self.pokemon_name}")
 
