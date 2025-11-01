@@ -2,6 +2,7 @@ import os
 import random
 from discord.ext import commands, tasks
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from cogs.utils import get_random_pokemon
 from data_models.pokemon import Pokemon
@@ -96,8 +97,46 @@ class SafariCog(commands.Cog):
     @commands.command(name="unregister-user")
     @commands.has_permissions(administrator=True)
     async def unregister_user(self, ctx: commands.Context, discord_id: int):
-        pass
-        #await ctx.send(f"User `{discord_name}` with ID `{discord_id}` has been unregistered!")
+        async with AsyncSessionLocal() as session:
+            
+           # Check if user exists (therefore is registered)
+            result = await session.execute(select(Users).where(Users.discord_id == discord_id))
+            existing_user = result.scalar_one_or_none()
+
+            if existing_user is None:
+                await ctx.send(f"User with ID `{discord_id}` is not registered")
+                await session.close()
+                return
+            
+            await session.delete(existing_user)
+            await session.commit()
+
+            await ctx.send(f"User with ID `{discord_id}` has been unregistered!")
+
+    @commands.command(name="inventory")
+    async def inventory(self, ctx: commands.Context):
+        """ Will display the user's current inventory (number of pokeballs and bait  left)"""
+        async with AsyncSessionLocal() as session:
+            discord_user_id = ctx.author.id
+
+            # Fetch user + inventory 
+            result = await session.execute(
+                select(Users)
+                .options(selectinload(Users.inventory))
+                .where(Users.discord_id == discord_user_id))
+            user = result.scalar_one_or_none()
+
+            if user is None:
+                await ctx.send(f"User with id: {discord_user_id} is not registered")
+                await session.close()
+                return
+
+            inventory = user.inventory
+
+            if inventory is None:
+                await ctx.send("No inventory found")
+            
+            await ctx.send(f"Remaining Bait: {inventory.bait}\nRemaining Pokeballs: {inventory.pokeballs}") 
 
 
     @tasks.loop(minutes=2)
@@ -120,6 +159,8 @@ class SafariCog(commands.Cog):
     @set_safari_channels.error
     @stop_safari.error
     @register_user.error
+    @unregister_user.error
+    @inventory.error
     async def safari_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to use this command.")
