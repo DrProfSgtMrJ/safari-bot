@@ -1,4 +1,5 @@
-from sqlalchemy import Column, ForeignKey, Integer, BigInteger, String, Enum
+from datetime import datetime, timezone
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, BigInteger, String, Enum
 from sqlalchemy.orm import relationship
 from .db import Base
 import enum
@@ -19,6 +20,7 @@ class Users(Base):
     discord_display_name = Column(String(255), nullable=False)
 
     inventory = relationship("SafariInventory", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    caught_pokemon = relationship("CaughtPokemon", back_populates="user", cascade="all, delete-orphan")
 
 class Pokemon(Base):
     __tablename__ = "pokemon"
@@ -37,3 +39,15 @@ class SafariInventory(Base):
     pokeballs = Column(Integer, nullable=False, default=8)
 
     user = relationship("Users", back_populates="inventory")
+
+class CaughtPokemon(Base):
+    __tablename__ = "caught_pokemon"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    pokemon_id = Column(ForeignKey("pokemon.id", ondelete="CASCADE"), nullable=False)
+    caught_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    user = relationship("Users", back_populates="caught_pokemon")
+    pokemon = relationship("Pokemon")
