@@ -4,51 +4,40 @@ import discord
 from discord.ui import View
 
 from data_models import action
-from data_models.pokemon import Rarity
+from data_models.pokemon import Pokemon, PokemonStatus, Rarity
 from data_models.action import UserAction, ActionType
 from db.helpers import UseBallResult, catch_pokemon, use_bait, UseBaitResult, use_ball
 
 class PokemonView(View):
-    pokemon_id: int
-    pokemon_name: str
-    rarity: Rarity
-    catch_chance: float
-    flee_chance: float
+    pokemon: Pokemon
     bait_thrown: int
-    fled: bool
-    caught: bool
     action_queue: asyncio.Queue
+    discord_message: discord.Message | None
 
-    def __init__(self, pokemon_id: int, pokemon_name: str, rarity: Rarity, timeout: float | None = 180.0):
+    def __init__(self, pokemon: Pokemon, timeout: float | None = 180.0):
         super().__init__(timeout=timeout)
-        self.pokemon_id = pokemon_id
-        self.pokemon_name = pokemon_name
-        self.rarity = rarity
+        self.pokemon = pokemon
         self.action_queue = asyncio.Queue()
         self.bait_thrown = 0
-
-        self.catch_chance = {
-            Rarity.COMMON: 0.6,
-            Rarity.UNCOMMON: 0.45,
-            Rarity.RARE: 0.3,
-            Rarity.LEGENDARY: 0.1
-        }[rarity]
-        
-        self.flee_chance = {
-            Rarity.COMMON: 0.05,
-            Rarity.UNCOMMON: 0.1,
-            Rarity.RARE: 0.2,
-            Rarity.LEGENDARY: 0.5
-        }[rarity]
-
-        self.fled = False
-        self.caught = False
+        self.discord_message = None
 
         asyncio.create_task(self._process_actions())
 
+    def fled(self) -> bool:
+        return self.pokemon.status == PokemonStatus.FLED
+    
+    def caught(self) -> bool:
+        return self.pokemon.status == PokemonStatus.CAUGHT
+
+    def name(self) -> str:
+        return self.pokemon.name
+
+    def pokemon_id(self) -> int:
+        return self.pokemon.id
+
     async def _process_actions(self):
         """Continously process queued user actions"""
-        while not self.fled:
+        while (not self.fled() and not self.caught()):
             try:
                 user_action: UserAction = await self.action_queue.get()
                 if user_action.action_type == ActionType.BAIT:
@@ -58,17 +47,15 @@ class PokemonView(View):
             except asyncio.CancelledError:
                 break
 
-
-
     @discord.ui.button(label="Throw Bait", style=discord.ButtonStyle.green)
     async def throw_bait(self, inter: discord.Interaction, button: discord.ui.Button):
-        if self.fled:
+        if (self.fled() or self.caught()):
             return
         await self.action_queue.put(UserAction(discord_user_id=inter.user.id, interaction=inter, action_type=ActionType.BAIT))
 
     @discord.ui.button(label="Throw Ball", style=discord.ButtonStyle.blurple)
     async def throw_ball(self, inter:discord.Interaction, button: discord.ui.Button):
-        if self.fled:
+        if (self.fled() or self.caught()):
             return
         await self.action_queue.put(UserAction(discord_user_id=inter.user.id, interaction=inter, action_type=ActionType.POKEBALL))
 
@@ -83,7 +70,7 @@ class PokemonView(View):
             return
         else:
             self.apply_bait()
-            await inter.response.send_message(f"{inter.user.mention} threw bait at {self.pokemon_name}")
+            await inter.response.send_message(f"{inter.user.mention} threw bait at {self.name()}")
 
     async def handle_use_ball(self, discord_user_id: int, inter: discord.Interaction):
         use_ball_result = await use_ball(discord_id=discord_user_id)
@@ -96,24 +83,39 @@ class PokemonView(View):
         else:
             await self.attempt_catch(discord_user_id=discord_user_id)
             print("throw ball")
-            await inter.response.send_message(f"{inter.user.mention} threw a ball at {self.pokemon_name}")
+            await inter.response.send_message(f"{inter.user.mention} threw a ball at {self.name()}")
 
     def apply_bait(self):
         """Apply bait effects: Increase catch chance, reduce flee chance."""
         self.bait_thrown += 1
-        self.catch_chance = min(self.catch_chance + 0.05, 0.95)
-        self.flee_chance = max(self.flee_chance - 0.05, 0.05)
-        print(f"Applying bait: catch chance now: {self.catch_chance}, Flee chance now: {self.flee_chance}")
+        self.pokemon.catch_chance = min(self.pokemon.catch_chance + 0.05, 0.95)
+        self.pokemon.flee_chance = max(self.pokemon.flee_chance - 0.05, 0.05)
+        print(f"Applying bait: catch chance now: {self.pokemon.catch_chance}, Flee chance now: {self.pokemon.flee_chance}")
 
     async def attempt_catch(self, discord_user_id: int):
         """ Attempts to catch the pokemon: potentially flees"""
 
-        if random.random() <= self.catch_chance:
+        if random.random() <= self.pokemon.catch_chance:
+            await catch_pokemon(discord_user_id=discord_user_id, pokemon_id=self.pokemon.id)
+            self.pokemon.status = PokemonStatus.CAUGHT
+            await self.on_status_change()
             print("Caught")
-            await catch_pokemon(discord_user_id=discord_user_id, pokemon_id=self.pokemon_id)
-            self.caught = True
             return
-        if random.random() <= self.flee_chance:
-            self.fled = True
+        if random.random() <= self.pokemon.flee_chance:
+            self.pokemon.status = PokemonStatus.FLED
+            await self.on_status_change()
             print("fled")
             return
+
+    async def on_status_change(self):
+        """Update the embed message to display the appropriate status"""
+        if self.discord_message is not None:
+            await self.discord_message.edit(embed=self.pokemon.to_embeded(), view=self)
+
+        await self.disable_buttons()
+
+    async def disable_buttons(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
