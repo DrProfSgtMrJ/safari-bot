@@ -10,9 +10,11 @@ from db.helpers import UseBallResult, use_bait, UseBaitResult, use_ball
 class PokemonView(View):
     pokemon_name: str
     rarity: Rarity
-    base_catch_chance: float
-    base_flee_chance: float
+    catch_chance: float
+    flee_chance: float
+    bait_thrown: int
     fled: bool
+    caught: bool
     action_queue: asyncio.Queue
 
     def __init__(self, pokemon_name: str, rarity: Rarity, timeout: float | None = 180.0):
@@ -20,15 +22,16 @@ class PokemonView(View):
         self.pokemon_name = pokemon_name
         self.rarity = rarity
         self.action_queue = asyncio.Queue()
+        self.bait_thrown = 0
 
-        self.base_catch_chance = {
+        self.catch_chance = {
             Rarity.COMMON: 0.6,
             Rarity.UNCOMMON: 0.45,
             Rarity.RARE: 0.3,
             Rarity.LEGENDARY: 0.1
         }[rarity]
         
-        self.base_flee_chance = {
+        self.flee_chance = {
             Rarity.COMMON: 0.05,
             Rarity.UNCOMMON: 0.1,
             Rarity.RARE: 0.2,
@@ -36,6 +39,7 @@ class PokemonView(View):
         }[rarity]
 
         self.fled = False
+        self.caught = False
 
         asyncio.create_task(self._process_actions())
 
@@ -74,9 +78,9 @@ class PokemonView(View):
         elif use_bait_result == UseBaitResult.NoBaitLeft:
             await inter.response.send_message(f"{inter.user.mention} has no more bait left")
             return
-
-        print("throw bait")
-        await inter.response.send_message(f"{inter.user.mention} threw bait at {self.pokemon_name}")
+        else:
+            self.apply_bait()
+            await inter.response.send_message(f"{inter.user.mention} threw bait at {self.pokemon_name}")
 
     async def handle_use_ball(self, discord_user_id: int, inter: discord.Interaction):
         use_ball_result = await use_ball(discord_id=discord_user_id)
@@ -89,3 +93,10 @@ class PokemonView(View):
 
         print("throw ball")
         await inter.response.send_message(f"{inter.user.mention} threw a ball at {self.pokemon_name}")
+
+    def apply_bait(self):
+        """Apply bait effects: Increase catch chance, reduce flee chance."""
+        self.bait_thrown += 1
+        self.catch_chance = min(self.catch_chance + 0.05, 0.95)
+        self.flee_chance = max(self.flee_chance - 0.05, 0.05)
+        print(f"Applying bait: catch chance now: {self.catch_chance}, Flee chance now: {self.flee_chance}")
