@@ -152,7 +152,7 @@ class SafariCog(commands.Cog):
 
         pokemon: Pokemon = await get_random_pokemon()
         print(f"Got: {pokemon.name}")
-        pokemon_view = PokemonView(pokemon_name=pokemon.name, rarity=pokemon.rarity)
+        pokemon_view = PokemonView(pokemon_id=pokemon.id, pokemon_name=pokemon.name, rarity=pokemon.rarity)
         await safari_channel.send(view=pokemon_view, embed=pokemon.to_embeded())
 
     @start_safari.error

@@ -1,7 +1,7 @@
 import random
 from sqlalchemy import func, select
 from db.db import AsyncSessionLocal
-from db.models import Pokemon, Rarity, SafariInventory, Users
+from db.models import CaughtPokemon, Pokemon, Rarity, SafariInventory, Users
 from enum import Enum
 
 class UseBaitResult(str, Enum):
@@ -85,5 +85,22 @@ async def use_ball(discord_id: int) -> UseBallResult:
         await session.commit()
 
     return UseBallResult.BallUsed
+
+async def catch_pokemon(discord_user_id: int, pokemon_id: int):
+    print(f"Catching pokemon: {pokemon_id}")
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(Users).where(Users.discord_id == discord_user_id))
+        user = result.scalar_one_or_none()
+
+        if not user:
+            print(f"User {discord_user_id} not found")
+            return
+
+        caught_pokemon = CaughtPokemon(
+            user_id=user.id,
+            pokemon_id=pokemon_id,
+        )
+        session.add(caught_pokemon)
+        await session.commit()
     
 

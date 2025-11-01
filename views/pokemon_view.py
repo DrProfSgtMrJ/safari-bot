@@ -1,13 +1,15 @@
 import asyncio
+import random
 import discord
 from discord.ui import View
 
 from data_models import action
 from data_models.pokemon import Rarity
 from data_models.action import UserAction, ActionType
-from db.helpers import UseBallResult, use_bait, UseBaitResult, use_ball
+from db.helpers import UseBallResult, catch_pokemon, use_bait, UseBaitResult, use_ball
 
 class PokemonView(View):
+    pokemon_id: int
     pokemon_name: str
     rarity: Rarity
     catch_chance: float
@@ -17,8 +19,9 @@ class PokemonView(View):
     caught: bool
     action_queue: asyncio.Queue
 
-    def __init__(self, pokemon_name: str, rarity: Rarity, timeout: float | None = 180.0):
+    def __init__(self, pokemon_id: int, pokemon_name: str, rarity: Rarity, timeout: float | None = 180.0):
         super().__init__(timeout=timeout)
+        self.pokemon_id = pokemon_id
         self.pokemon_name = pokemon_name
         self.rarity = rarity
         self.action_queue = asyncio.Queue()
@@ -90,9 +93,10 @@ class PokemonView(View):
         elif use_ball_result == UseBallResult.NoBallsLeft:
             await inter.response.send_message(f"{inter.user.mention} has no more pokeballs left")
             return
-
-        print("throw ball")
-        await inter.response.send_message(f"{inter.user.mention} threw a ball at {self.pokemon_name}")
+        else:
+            await self.attempt_catch(discord_user_id=discord_user_id)
+            print("throw ball")
+            await inter.response.send_message(f"{inter.user.mention} threw a ball at {self.pokemon_name}")
 
     def apply_bait(self):
         """Apply bait effects: Increase catch chance, reduce flee chance."""
@@ -100,3 +104,16 @@ class PokemonView(View):
         self.catch_chance = min(self.catch_chance + 0.05, 0.95)
         self.flee_chance = max(self.flee_chance - 0.05, 0.05)
         print(f"Applying bait: catch chance now: {self.catch_chance}, Flee chance now: {self.flee_chance}")
+
+    async def attempt_catch(self, discord_user_id: int):
+        """ Attempts to catch the pokemon: potentially flees"""
+
+        if random.random() <= self.catch_chance:
+            print("Caught")
+            await catch_pokemon(discord_user_id=discord_user_id, pokemon_id=self.pokemon_id)
+            self.caught = True
+            return
+        if random.random() <= self.flee_chance:
+            self.fled = True
+            print("fled")
+            return
