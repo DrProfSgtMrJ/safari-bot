@@ -69,20 +69,26 @@ class SafariCog(commands.Cog):
         self.safari_channel_ids = channel_ids
         await ctx.send(f"Setting Safari Channels to: {self.safari_channel_ids}")
 
-    @commands.command(name="register-user")
+    @commands.command(name="register-users")
     @commands.has_permissions(administrator=True)
-    async def register_user(self, ctx: commands.Context, discord_id: int):
+    async def register_users(self, ctx: commands.Context, *discord_ids: int):
         async with AsyncSessionLocal() as session:
             # check if user is already registered
-            result = await session.execute(select(Users).where(Users.discord_id == discord_id))
-            existing_user = result.scalar_one_or_none()
-            if existing_user:
-                await ctx.send(f"User with ID `{discord_id}` is already registered!")
-                await session.close()
-                return
+            registered_users = []
+            already_resgistered = []
+
+            for discord_id in discord_ids:
+                result = await session.execute(select(Users).where(Users.discord_id == discord_id))
+                existing_user = result.scalar_one_or_none()
+                if existing_user:
+                    already_resgistered.append(discord_id)
+                    continue
             
-            member = await ctx.guild.fetch_member(discord_id)
-            if member:
+
+                member = await ctx.guild.fetch_member(discord_id)
+                if member is None:
+                    await ctx.send(f"Could not find a member with ID {discord_id}. Skipping")
+                    continue
                 discord_name = member.name
 
                 new_user = Users(discord_id=discord_id, discord_display_name=discord_name)
@@ -94,7 +100,12 @@ class SafariCog(commands.Cog):
                 session.add(inventory)
                 await session.commit()
 
-                await ctx.send(f"User `{discord_name}` with ID `{discord_id}` has been registered")
+                registered_users.append(discord_name)
+            
+            msg = ""
+            msg += f"Registered users: {', '.join(registered_users)}\n"
+            msg += f"Already registered: {','.join(str(i) for i in already_resgistered)}"
+            await ctx.send(msg)
 
     @commands.command(name="unregister-user")
     @commands.has_permissions(administrator=True)
@@ -164,9 +175,10 @@ class SafariCog(commands.Cog):
     @start_safari.error
     @set_safari_channels.error
     @stop_safari.error
-    @register_user.error
+    @register_users.error
     @unregister_user.error
     @inventory.error
+    @caught.error
     async def safari_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to use this command.")
