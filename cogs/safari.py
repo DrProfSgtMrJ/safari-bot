@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from cogs.utils import get_random_pokemon
 from data_models.pokemon import Pokemon
+from db.helpers import get_inventory
 from views.pokemon_view import PokemonView
 from db.db import AsyncSessionLocal
 from db.models import SafariInventory, Users
@@ -116,27 +117,13 @@ class SafariCog(commands.Cog):
     @commands.command(name="inventory")
     async def inventory(self, ctx: commands.Context):
         """ Will display the user's current inventory (number of pokeballs and bait  left)"""
-        async with AsyncSessionLocal() as session:
-            discord_user_id = ctx.author.id
+        discord_user_id = ctx.author.id
+        safari_inventory = await get_inventory(discord_user_id=discord_user_id)
 
-            # Fetch user + inventory 
-            result = await session.execute(
-                select(Users)
-                .options(selectinload(Users.inventory))
-                .where(Users.discord_id == discord_user_id))
-            user = result.scalar_one_or_none()
-
-            if user is None:
-                await ctx.send(f"User with id: {discord_user_id} is not registered")
-                await session.close()
-                return
-
-            inventory = user.inventory
-
-            if inventory is None:
-                await ctx.send("No inventory found")
-            
-            await ctx.send(f"Remaining Bait: {inventory.bait}\nRemaining Pokeballs: {inventory.pokeballs}") 
+        if safari_inventory is None:
+            await ctx.send("No inventory found")
+        
+        await ctx.send(f"Remaining Bait: {safari_inventory.bait}\nRemaining Pokeballs: {safari_inventory.pokeballs}") 
 
 
     @tasks.loop(minutes=2)

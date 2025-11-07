@@ -1,5 +1,6 @@
 import random
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from db.db import AsyncSessionLocal
 from db.models import CaughtPokemon, Pokemon, Rarity, SafariInventory, Users
 from enum import Enum
@@ -102,5 +103,19 @@ async def catch_pokemon(discord_user_id: int, pokemon_id: int):
         )
         session.add(caught_pokemon)
         await session.commit()
+
+async def get_inventory(discord_user_id: int) -> SafariInventory | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Users)
+            .options(selectinload(Users.inventory))
+            .where(Users.discord_id == discord_user_id))
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            print(f"User is None for ID: {discord_user_id}")
+            return None
+        
+        return user.inventory
     
 
