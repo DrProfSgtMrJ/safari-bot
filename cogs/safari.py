@@ -134,6 +134,7 @@ class SafariCog(commands.Cog):
 
         if safari_inventory is None:
             await ctx.send("No inventory found")
+            return
         
         await ctx.send(f"Remaining Bait: {safari_inventory.bait}\nRemaining Pokeballs: {safari_inventory.pokeballs}") 
 
