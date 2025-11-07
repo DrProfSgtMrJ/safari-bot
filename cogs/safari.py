@@ -1,12 +1,13 @@
 import os
 import random
+from discord import Embed
 from discord.ext import commands, tasks
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from cogs.utils import get_random_pokemon
 from data_models.pokemon import Pokemon
-from db.helpers import get_inventory
+from db.helpers import get_caught, get_inventory
 from views.pokemon_view import PokemonView
 from db.db import AsyncSessionLocal
 from db.models import SafariInventory, Users
@@ -125,6 +126,23 @@ class SafariCog(commands.Cog):
         
         await ctx.send(f"Remaining Bait: {safari_inventory.bait}\nRemaining Pokeballs: {safari_inventory.pokeballs}") 
 
+    @commands.command(name="caught")
+    async def caught(self, ctx: commands.Context):
+        """ Will display the user's current caught pokemon """
+        discord_user_id = ctx.author.id
+        caught_pokemon = await get_caught(discord_user_id=discord_user_id)
+
+        if not caught_pokemon:
+            await ctx.send("You haven't caught any Pokemon yet!")
+            return
+        
+        embeds = []
+        for caught in caught_pokemon:
+            poke = Pokemon.from_db_caught_pokemon(db_caught_pokemon=caught)
+            embeds.append(poke.to_caught_embeded())
+
+        await ctx.send(embeds=embeds)
+
 
     @tasks.loop(minutes=2)
     async def safari_task(self):
@@ -140,7 +158,7 @@ class SafariCog(commands.Cog):
         pokemon: Pokemon = await get_random_pokemon()
         print(f"Got: {pokemon.name}")
         pokemon_view = PokemonView(pokemon=pokemon)
-        message = await safari_channel.send(view=pokemon_view, embed=pokemon.to_embeded())
+        message = await safari_channel.send(view=pokemon_view, embed=pokemon.to_wild_embeded())
         pokemon_view.discord_message = message
 
     @start_safari.error

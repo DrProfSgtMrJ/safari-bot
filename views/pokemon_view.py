@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import random
 import discord
 from discord.ui import View
@@ -97,12 +98,12 @@ class PokemonView(View):
 
         if random.random() <= self.pokemon.catch_chance:
             await catch_pokemon(discord_user_id=discord_user_id, pokemon_id=self.pokemon.id)
-            self.pokemon.status = PokemonStatus.CAUGHT
+            self.pokemon.catch(caught_at=datetime.datetime.utcnow())
             await self.on_status_change()
             print("Caught")
             return
         if random.random() <= self.pokemon.flee_chance:
-            self.pokemon.status = PokemonStatus.FLED
+            self.pokemon.flee(fled_at=datetime.datetime.utcnow())
             await self.on_status_change()
             print("fled")
             return
@@ -110,7 +111,7 @@ class PokemonView(View):
     async def on_status_change(self):
         """Update the embed message to display the appropriate status"""
         if self.discord_message is not None:
-            await self.discord_message.edit(embed=self.pokemon.to_embeded(), view=self)
+            await self.discord_message.edit(embed=self.pokemon.to_wild_embeded(), view=self)
 
         await self.disable_buttons()
 

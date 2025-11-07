@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from discord import Embed, Color
-from db.models import Pokemon as DbPokemon, Rarity as DbRarity
+from db.models import CaughtPokemon, Pokemon as DbPokemon, Rarity as DbRarity
 
 
 class Rarity(str, Enum):
@@ -47,7 +48,7 @@ class Rarity(str, Enum):
 class PokemonStatus(str, Enum):
     FLED = "FLED"
     CAUGHT = "CAUGHT"
-    EMPTY = "EMPTY"
+    WILD = "WILD"
 
 @dataclass
 class Pokemon:
@@ -55,19 +56,47 @@ class Pokemon:
     name: str
     sprite_url: str
     rarity: Rarity
-    status: PokemonStatus = PokemonStatus.EMPTY
+    status: PokemonStatus = PokemonStatus.WILD
+    caught_at: datetime | None = None
+    fled_at: datetime | None = None
     catch_chance: float = 0
     flee_chance: float = 0
 
     @classmethod
-    def from_db_pokemon(cls, db_pokemon: DbPokemon) -> "Pokemon":
-        return cls(id=int(db_pokemon.id), name=str(db_pokemon.name), sprite_url=str(db_pokemon.sprite_url), rarity=Rarity.from_db_rarity(db_pokemon.rarity))
+    def from_db_pokemon(cls, db_pokemon: DbPokemon, status: PokemonStatus = PokemonStatus.WILD) -> "Pokemon":
+        return cls(
+            id=int(db_pokemon.id),
+            name=str(db_pokemon.name),
+            sprite_url=str(db_pokemon.sprite_url),
+            rarity=Rarity.from_db_rarity(db_pokemon.rarity),
+            status=status,
+        )
+
+    @classmethod
+    def from_db_caught_pokemon(cls, db_caught_pokemon: CaughtPokemon) -> "Pokemon":
+        poke: DbPokemon = db_caught_pokemon.pokemon
+        return cls(
+            id=int(poke.id),
+            name=str(poke.name),
+            sprite_url=str(poke.sprite_url),
+            rarity=Rarity.from_db_rarity(poke.rarity),
+            status=PokemonStatus.CAUGHT,
+            caught_at=db_caught_pokemon.caught_at
+        )
 
     def __post_init__(self):
         self.catch_chance = self.rarity.catch_chance()
         self.flee_chance = self.rarity.flee_chance()
 
-    def to_embeded(self) -> Embed:
+    def flee(self, fled_at: datetime):
+        self.status = PokemonStatus.FLED
+        self.fled_at = fled_at
+
+    def catch(self, caught_at: datetime):
+        self.status = PokemonStatus.CAUGHT
+        self.caught_at = caught_at
+
+    def to_wild_embeded(self) -> Embed:
         embed = Embed(
             title=f"A wild {self.name} appeared!",
             description="What will you do?",
@@ -83,3 +112,15 @@ class Pokemon:
         embed.set_footer(text=footer_str)
 
         return embed
+    
+    def to_caught_embeded(self) -> Embed:
+        embed = Embed(
+            title=self.name,
+            description=f"Rarity: {self.rarity.get_star()}",
+            color=0x00BFFF # light blue
+        )
+        embed.set_image(url=self.sprite_url)
+        embed.set_footer(text=f"Caught at {self.caught_at.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
+        return embed
+
