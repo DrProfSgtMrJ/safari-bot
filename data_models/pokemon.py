@@ -59,8 +59,8 @@ class Pokemon:
     status: PokemonStatus = PokemonStatus.WILD
     caught_at: datetime | None = None
     fled_at: datetime | None = None
-    catch_chance: float = 0
-    flee_chance: float = 0
+    flee_modifier: float = 0.0 # increases with failed throws
+    bait_modifier: float = 0.0 # increases/decreases with bait
 
     @classmethod
     def from_db_pokemon(cls, db_pokemon: DbPokemon, status: PokemonStatus = PokemonStatus.WILD) -> "Pokemon":
@@ -87,6 +87,19 @@ class Pokemon:
     def __post_init__(self):
         self.catch_chance = self.rarity.catch_chance()
         self.flee_chance = self.rarity.flee_chance()
+    
+    @property
+    def effective_catch_chance(self) -> float:
+        """ base + bait bonus, capped at 0.95"""
+        return min(self.rarity.catch_chance() + self.bait_modifier, 0.95)
+
+    @property
+    def effetive_flee_chance(self) -> float:
+        """ base + flee mod, capped at [0.05, 1.0]"""
+        return max(
+            min(self.rarity.flee_chance() + self.flee_modifier - self.bait_modifier, 1.0)
+            , 0.05
+        )
 
     def flee(self, fled_at: datetime):
         self.status = PokemonStatus.FLED
