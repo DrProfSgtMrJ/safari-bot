@@ -5,9 +5,9 @@ from discord.ext import commands, tasks
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from cogs.utils import get_random_pokemon
+from cogs.utils import get_random_pokemon, spawn_pokemon
 from data_models.pokemon import Pokemon
-from db.helpers import GiveItemResult, get_caught, get_inventory, give_from_inventory, show
+from db.helpers import GiveItemResult, get_caught, get_inventory, give_from_inventory, show 
 from views.pokemon_view import PokemonView
 from db.db import AsyncSessionLocal
 from db.models import CaughtPokemon, SafariInventory, Users
@@ -196,6 +196,17 @@ class SafariCog(commands.Cog):
         else:
             await ctx.send(f"Invalid")
 
+    @commands.command(name="spawn")
+    @commands.has_permissions(administrator=True)
+    async def spawn(self, ctx: commands.Context, pokemon_identifier: str):
+        pokemon: Pokemon | None = await spawn_pokemon(pokemon_identifier=pokemon_identifier)
+        if pokemon:
+            pokemon_view = PokemonView(pokemon=pokemon)
+            message = await ctx.send(view=pokemon_view, embed=pokemon.to_wild_embeded())
+            pokemon_view.discord_message = message
+        else:
+            await ctx.send(f"Unable to spawn pokemon with {pokemon_identifier}")
+
     @tasks.loop(minutes=2)
     async def safari_task(self):
         if not self.safari_active or len(self.safari_channel_ids) == 0:
@@ -222,6 +233,7 @@ class SafariCog(commands.Cog):
     @caught.error
     @give.error
     @show.error
+    @spawn.error
     async def safari_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to use this command.")

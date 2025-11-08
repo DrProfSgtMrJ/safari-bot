@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from db.db import Base, engine
-from db.models import Users, Pokemon, SafariInventory
+from db.models import Users, Pokemon, SafariInventory, CaughtPokemon, TriviaQuestion
 
 
 load_dotenv()

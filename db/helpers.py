@@ -2,7 +2,7 @@ import random
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 from db.db import AsyncSessionLocal
-from db.models import CaughtPokemon, Pokemon, Rarity, SafariInventory, Users
+from db.models import CaughtPokemon, Pokemon, Rarity, SafariInventory, TriviaQuestion, Users
 from enum import Enum
 
 class UseBaitResult(str, Enum):
@@ -66,7 +66,6 @@ async def use_bait(discord_id: int) -> UseBaitResult:
             return UseBaitResult.NoBaitLeft
 
         safari_inventory.bait -= 1
-        session.add(safari_inventory)
         await session.commit()
 
     return UseBaitResult.BaitUsed
@@ -89,7 +88,6 @@ async def use_ball(discord_id: int) -> UseBallResult:
             return UseBallResult.NoBallsLeft
 
         safari_inventory.pokeballs -= 1
-        session.add(safari_inventory)
         await session.commit()
 
     return UseBallResult.BallUsed
@@ -192,7 +190,7 @@ async def get_caught(discord_user_id: int) -> list[CaughtPokemon]:
     return []
 
 async def show(discord_user_id: int, item_type: str) -> str | list[CaughtPokemon] | SafariInventory | None:
-    valid_items = ["bait", "pokeballs", "pokeball", "caught", "inventory"]
+    valid_items = ["bait", "pokeballs", "pokeball", "caught", "inventory", "balls"]
     item_type = item_type.lower()
     if item_type not in valid_items:
         return f"Invalid item: {item_type}."
@@ -206,7 +204,7 @@ async def show(discord_user_id: int, item_type: str) -> str | list[CaughtPokemon
             return f"Bait: {inv.bait}"
         else:
             return "Inventory not found"
-    elif item_type == "bait":
+    elif item_type in ["pokeballs", "pokeball", "balls"]:
         inv = await get_inventory(discord_user_id=discord_user_id)
         if inv:
             return f"Pokeballs: {inv.pokeballs}"
@@ -214,6 +212,46 @@ async def show(discord_user_id: int, item_type: str) -> str | list[CaughtPokemon
             return "Inventory not found"
 
     return None
+
+async def get_random_trivia_question(mark_used: bool = True) -> str | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TriviaQuestion)
+            .where(TriviaQuestion.used == False)
+            .order_by(func.random())
+            .limit(1)
+        )
+        
+        question: TriviaQuestion = result.scalar_one_or_none()
+
+        if question:
+            # Mark it as used
+            if mark_used:
+                question.used = True
+                await session.commit()
+            return str(question.question)
+
+        return None
+
+async def spawn_pokemon(pokemon_identifier: str) -> Pokemon | None:
+    try:
+        pokemon_id = int(pokemon_identifier)
+        return await get_pokemon_by_id(id=pokemon_id)
+    except ValueError:
+        return await get_pokemon_by_name(name=pokemon_identifier)
+    
+
+
+async def get_pokemon_by_id(id: int) -> Pokemon | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(Pokemon).where(Pokemon.id == id))
+        return result.scalar_one_or_none()
+
+async def get_pokemon_by_name(name: str) -> Pokemon | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(Pokemon).where(Pokemon.name.ilike(name)))
+        return result.scalar_one_or_none()
+
          
 
 

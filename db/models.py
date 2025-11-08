@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, BigInteger, String, Enum
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, Enum, Text, null
 from sqlalchemy.orm import relationship
 from .db import Base
 import enum
@@ -51,3 +51,10 @@ class CaughtPokemon(Base):
     # Relationships
     user = relationship("Users", back_populates="caught_pokemon")
     pokemon = relationship("Pokemon")
+
+class TriviaQuestion(Base):
+    __tablename__ = "trivia_question"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question = Column(Text, nullable=False)
+    used = Column(Boolean, default=False)
