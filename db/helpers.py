@@ -191,4 +191,29 @@ async def get_caught(discord_user_id: int) -> list[CaughtPokemon]:
             return user.caught_pokemon
     return []
 
+async def show(discord_user_id: int, item_type: str) -> str | list[CaughtPokemon] | SafariInventory | None:
+    valid_items = ["bait", "pokeballs", "pokeball", "caught", "inventory"]
+    item_type = item_type.lower()
+    if item_type not in valid_items:
+        return f"Invalid item: {item_type}."
+    elif item_type == "caught":
+        return await get_caught(discord_user_id=discord_user_id)
+    elif item_type == "inventory":
+        return await get_inventory(discord_user_id=discord_user_id)
+    elif item_type == "bait":
+        inv = await get_inventory(discord_user_id=discord_user_id)
+        if inv:
+            return f"Bait: {inv.bait}"
+        else:
+            return "Inventory not found"
+    elif item_type == "bait":
+        inv = await get_inventory(discord_user_id=discord_user_id)
+        if inv:
+            return f"Pokeballs: {inv.pokeballs}"
+        else:
+            return "Inventory not found"
+
+    return None
+         
+
 

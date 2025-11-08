@@ -7,10 +7,10 @@ from sqlalchemy.orm import selectinload
 
 from cogs.utils import get_random_pokemon
 from data_models.pokemon import Pokemon
-from db.helpers import GiveItemResult, get_caught, get_inventory, give_from_inventory
+from db.helpers import GiveItemResult, get_caught, get_inventory, give_from_inventory, show
 from views.pokemon_view import PokemonView
 from db.db import AsyncSessionLocal
-from db.models import SafariInventory, Users
+from db.models import CaughtPokemon, SafariInventory, Users
 
 
 
@@ -176,6 +176,26 @@ class SafariCog(commands.Cog):
         else:
             await ctx.send(f"Gave {amount} to user with id: {target_id}")
 
+    @commands.command(name="show")
+    @commands.has_permissions(administrator=True)
+    async def show(self, ctx: commands.Context, item_type: str, user: Member):
+        target_id = user.id
+        result = await show(discord_user_id=target_id, item_type=item_type)
+
+        if isinstance(result, str):
+            await ctx.send(result)
+        elif isinstance(result, list) and isinstance(result[0], CaughtPokemon):
+            embeds = []
+            for caught in result:
+                poke = Pokemon.from_db_caught_pokemon(db_caught_pokemon=caught)
+                embeds.append(poke.to_caught_embeded())
+
+            await ctx.send(embeds=embeds)
+        elif isinstance(result, SafariInventory):
+            await ctx.send(f"Remaining Bait: {result.bait}\nRemaining Pokeballs: {result.pokeballs}") 
+        else:
+            await ctx.send(f"Invalid")
+
     @tasks.loop(minutes=2)
     async def safari_task(self):
         if not self.safari_active or len(self.safari_channel_ids) == 0:
@@ -201,6 +221,7 @@ class SafariCog(commands.Cog):
     @inventory.error
     @caught.error
     @give.error
+    @show.error
     async def safari_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to use this command.")
