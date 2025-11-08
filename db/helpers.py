@@ -15,6 +15,13 @@ class UseBallResult(str, Enum):
     NoBallsLeft = "NoBallsLeft"
     BallUsed = "BallUsed"
 
+class GiveItemResult(str, Enum):
+    GiverNotRegistered = "GiverNotRegistered"
+    ReceiverNotRegistered = "ReceiverNotRegistered"
+    NoInventoryFound = "NoInventoryFound"
+    InvalidItemType  = "InvalidItemType"
+    InsufficientAmount = "InsufficientAmount"
+
 RARITY_WEIGHTS = {
     Rarity.COMMON: 60,
     Rarity.UNCOMMON: 25,
@@ -117,6 +124,55 @@ async def get_inventory(discord_user_id: int) -> SafariInventory | None:
             return None
         
         return user.inventory
+
+async def give_from_inventory(from_user_id: int, to_user_id: int, item_type: str, amount: int) -> GiveItemResult:
+    valid_items = ["bait", "pokeballs", "pokeball"]
+    item_type = item_type.lower()
+    if item_type not in valid_items:
+        return GiveItemResult.InvalidItemType
+
+    async with AsyncSessionLocal() as session:
+        giver_result = await session.execute(
+            select(Users)
+            .options(selectinload(Users.inventory))
+            .where(Users.discord_id == from_user_id))
+        giver_user = giver_result.scalar_one_or_none() 
+
+        if giver_user is None:
+            return GiveItemResult.GiverNotRegistered
+
+        receiver_result = await session.execute(
+            select(Users)
+            .options(selectinload(Users.inventory))
+            .where(Users.discord_id == to_user_id))
+        receiver_user = receiver_result.scalar_one_or_none() 
+
+        if receiver_user is None:
+            return GiveItemResult.ReceiverNotRegistered
+
+        giver_inv = giver_user.inventory
+        recv_inv = receiver_user.inventory
+
+        if giver_inv is None or recv_inv is None:
+            return GiveItemResult.NoInventoryFound
+        
+        if item_type in ["pokeball", "pokeballs"]:
+            if giver_inv.pokeballs < amount:
+                return GiveItemResult.InsufficientAmount
+            else:
+                giver_inv.pokeballs -= amount
+                recv_inv.pokeballs += amount
+        
+        if item_type in ["bait"]:
+            if giver_inv.bait < amount:
+                return GiveItemResult.InsufficientAmount
+            else:
+                giver_inv.bait -= amount
+                recv_inv.bait += amount
+
+        await session.commit()
+        
+        
     
 async def get_caught(discord_user_id: int) -> list[CaughtPokemon]:
     async with AsyncSessionLocal() as session:
@@ -134,6 +190,5 @@ async def get_caught(discord_user_id: int) -> list[CaughtPokemon]:
         if user:
             return user.caught_pokemon
     return []
-            
 
 

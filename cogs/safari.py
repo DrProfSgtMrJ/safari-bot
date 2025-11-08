@@ -1,13 +1,13 @@
 import os
 import random
-from discord import Embed
+from discord import Embed, Member
 from discord.ext import commands, tasks
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from cogs.utils import get_random_pokemon
 from data_models.pokemon import Pokemon
-from db.helpers import get_caught, get_inventory
+from db.helpers import GiveItemResult, get_caught, get_inventory, give_from_inventory
 from views.pokemon_view import PokemonView
 from db.db import AsyncSessionLocal
 from db.models import SafariInventory, Users
@@ -155,6 +155,26 @@ class SafariCog(commands.Cog):
 
         await ctx.send(embeds=embeds)
 
+    @commands.command(name="give")
+    async def give(self, ctx: commands.Context, item_type: str, amount: int, member: Member):
+        """ Gives either bait or pokeball to another user"""
+        discord_user_id = ctx.author.id
+        target_id = member.id
+
+        give_result = await give_from_inventory(from_user_id=discord_user_id, to_user_id=target_id, amount=amount, item_type=item_type)
+        
+        if give_result == GiveItemResult.GiverNotRegistered:
+            await ctx.send(f"User with id: {discord_user_id} is not registered")
+        elif give_result == GiveItemResult.ReceiverNotRegistered:
+            await ctx.send(f"User with id: {target_id} is not registered")
+        elif give_result == GiveItemResult.InvalidItemType:
+            await ctx.send(f"Invalid item type: {item_type}")
+        elif give_result == GiveItemResult.NoInventoryFound:
+            await ctx.send(f"No inventory found. Please check registered users")
+        elif give_result == GiveItemResult.InsufficientAmount:
+            await ctx.send(f"Invalid amount: {amount}")
+        else:
+            await ctx.send(f"Gave {amount} to user with id: {target_id}")
 
     @tasks.loop(minutes=2)
     async def safari_task(self):
@@ -180,6 +200,7 @@ class SafariCog(commands.Cog):
     @unregister_user.error
     @inventory.error
     @caught.error
+    @give.error
     async def safari_command_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to use this command.")

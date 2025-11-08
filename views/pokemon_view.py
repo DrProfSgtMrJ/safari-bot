@@ -75,12 +75,14 @@ class PokemonView(View):
         else:
             await self._send_message(inter, f"{inter.user.mention} threw a ball at {self.name()}")
             roll = random.random()
-            if roll <= self.pokemon.effective_catch_chance:
+            catch_threshold = self.pokemon.effective_catch_chance
+            flee_threshold = min(catch_threshold + self.pokemon.effective_flee_chance, 1.0)
+            if roll <= catch_threshold:
                 await catch_pokemon(discord_user_id=action.discord_user_id, pokemon_id=self.pokemon.id)
                 self.pokemon.catch(caught_at=datetime.datetime.now(datetime.timezone.utc))
                 await self._send_message(inter, f"{inter.user.mention} CAUGHT {self.name()}")
                 await self.on_status_change()
-            elif roll <= self.pokemon.effective_catch_chance + self.pokemon.effetive_flee_chance:
+            elif roll <= flee_threshold: 
                 self.pokemon.flee(fled_at=datetime.datetime.now(datetime.timezone.utc))
                 await self._send_message(inter, f"{self.name()} fled...")
                 await self.on_status_change()

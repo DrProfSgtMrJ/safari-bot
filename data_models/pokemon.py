@@ -84,17 +84,13 @@ class Pokemon:
             caught_at=db_caught_pokemon.caught_at
         )
 
-    def __post_init__(self):
-        self.catch_chance = self.rarity.catch_chance()
-        self.flee_chance = self.rarity.flee_chance()
-    
     @property
     def effective_catch_chance(self) -> float:
         """ base + bait bonus, capped at 0.95"""
         return min(self.rarity.catch_chance() + self.bait_modifier, 0.95)
 
     @property
-    def effetive_flee_chance(self) -> float:
+    def effective_flee_chance(self) -> float:
         """ base + flee mod, capped at [0.05, 1.0]"""
         return max(
             min(self.rarity.flee_chance() + self.flee_modifier - self.bait_modifier, 1.0)
