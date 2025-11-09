@@ -5,6 +5,7 @@ from discord import Intents
 from discord.ext import commands
 
 from cogs.safari import SafariCog
+from cogs.pokemon_trivia import PokemonTriviaCog
 
 load_dotenv()
 
@@ -18,6 +19,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def main():
     async with bot:
         await bot.add_cog(SafariCog(bot))
+        await bot.add_cog(PokemonTriviaCog(bot))
         await bot.start(token=DISCORD_TOKEN) 
 
 @bot.event

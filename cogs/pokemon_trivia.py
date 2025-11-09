@@ -36,7 +36,7 @@ class PokemonTriviaCog(commands.Cog):
         if not self.trivia_active:
             return
         
-        question = await get_random_trivia_question(mark_used=True)
+        question = await get_random_trivia_question(mark_used=True) # False for now while testing
         if question is None:
             await channel.send("Unable to obtain a new question")
         else:
