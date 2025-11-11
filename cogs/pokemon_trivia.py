@@ -26,12 +26,12 @@ class PokemonTriviaCog(commands.Cog):
         else:
             self.trivia_active = True
             channel = ctx.channel
-            await ctx.send("Trivia will start in 10 minutes!")
-            await asyncio.sleep(600) # 10 minutes
+            await ctx.send("Trivia will start in 30 seoncds!")
+            await asyncio.sleep(30) # 30 seconds
             self.trivia_task.start(channel)
 
     
-    @tasks.loop(minutes=30.0)
+    @tasks.loop(minutes=5.0)
     async def trivia_task(self, channel: Messageable):
         if not self.trivia_active:
             return
