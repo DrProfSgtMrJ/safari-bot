@@ -21,6 +21,7 @@ class Users(Base):
 
     inventory = relationship("SafariInventory", back_populates="user", uselist=False, cascade="all, delete-orphan")
     caught_pokemon = relationship("CaughtPokemon", back_populates="user", cascade="all, delete-orphan")
+    whisper_room = relationship("WhisperRoom", back_populates="user", cascade="all, delete-orphan")
 
 class Pokemon(Base):
     __tablename__ = "pokemon"
@@ -58,3 +59,13 @@ class TriviaQuestion(Base):
     id = Column(Integer, primary_key=True, index=True)
     question = Column(Text, nullable=False)
     used = Column(Boolean, default=False)
+
+class WhisperRoom(Base):
+    __tablename__ = "whisper_room"
+
+    id = Column(Integer, primary_key=True, index=True)
+    discord_channel_id = Column(BigInteger, unique=True, nullable=False)
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Relationships
+    user = relationship("Users", back_populates="whisper_room")
